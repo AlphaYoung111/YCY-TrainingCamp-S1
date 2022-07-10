@@ -5,7 +5,7 @@ class BrakeBanner {
 			height: window.innerHeight,
 			backgroundColor: 0xffffff,
 			// 铺满界面
-			resizeTo:window
+			resizeTo: window
 		})
 
 		// 初始化背景
@@ -31,6 +31,8 @@ class BrakeBanner {
 	}
 
 	show() {
+		this.createParticleAndLine()
+
 		let actionButton = this.createActionButton()
 		actionButton.x = actionButton.y = 500
 
@@ -109,6 +111,13 @@ class BrakeBanner {
 				duration: 0.8,
 				rotation: Math.PI / 180 * -30
 			})
+
+			this.pauseLineMove()
+
+			gsap.to(bikeContainer, {
+				duration: 0.8,
+				y: bikeContainer.y + 20
+			})
 		})
 
 		actionButton.on('mouseup', () => {
@@ -116,7 +125,15 @@ class BrakeBanner {
 				duration: 0.5,
 				rotation: 0
 			})
+
+			this.startLineMove()
+
+			gsap.to(bikeContainer, {
+				duration: 0.8,
+				y: bikeContainer.y - 20
+			})
 		})
+
 
 		this.stage.addChild(actionButton)
 
@@ -129,13 +146,12 @@ class BrakeBanner {
 
 		resize()
 
-		this.createParticleAndLine()
 
 		return bikeContainer
 	}
 
 	// 创建粒子和行走线
-	createParticleAndLine () {
+	createParticleAndLine() {
 		// 粒子有多个颜色
 		// 向某一个角度持续移动
 		// 超出边界后顶部继续移动
@@ -145,22 +161,92 @@ class BrakeBanner {
 		let particleContainer = new PIXI.Container()
 		this.stage.addChild(particleContainer)
 
+		particleContainer.pivot.x = window.innerWidth / 2
+		particleContainer.pivot.y = window.innerHeight / 2
+
+
+		particleContainer.x = window.innerWidth / 2
+		particleContainer.y = window.innerHeight / 2
+
+		particleContainer.rotation = 35 * Math.PI / 180
+
 		let particles = []
 
-		for(let i =0;i<10;i++) {
+		const colors = [0xf1cf54, 0xb5cea8, 0xf1cf54, 0x818181, 0x000000]
+
+		for (let i = 0; i < 15; i++) {
 			let gr = new PIXI.Graphics()
 
-			gr.beginFill(0xfff00)
+			gr.beginFill(colors[Math.floor(Math.random() * colors.length)])
 
-			gr.drawCircle(0,0,6)
+			gr.drawCircle(0, 0, 6)
 
 			gr.endFill()
 
-			gr.x =Math.random() * window.innerWidth
-			gr.y=Math.random() * window.innerHeight
+			let pItem = {
+				sx: Math.random() * window.innerWidth,
+				sy: Math.random() * window.innerWidth,
+				gr: gr
+			}
+
+			gr.x = pItem.sx
+			gr.y = pItem.sy
 
 			particleContainer.addChild(gr)
+
+			particles.push(pItem)
 		}
+
+
+		let speed = 0
+		function loop() {
+			speed += 0.5
+			speed = Math.min(speed, 20)
+
+			for (let pItem of particles) {
+				pItem.gr.y += speed
+
+				// 转换成线的流动感觉
+				// 通过y放大，x缩小来达到像素点的效果
+				pItem.gr.scale.y = 24
+				pItem.gr.scale.x = 0.03
+
+				if (pItem.gr.y > window.innerHeight) {
+					pItem.gr.y = 0
+				}
+			}
+		}
+
+		function start() {
+			speed = 0
+			// 类似开启关键帧动画的监听事件
+			gsap.ticker.add(loop)
+		}
+
+		function pause() {
+			gsap.ticker.remove(loop)
+
+			// 回归成原始的点
+			for (let pItem of particles) {
+				pItem.gr.scale.y = 1
+				pItem.gr.scale.x = 1
+
+				// 停下来的回弹动效
+				gsap.to(pItem.gr, {
+					duration: 0.6,
+					x: pItem.sx,
+					y: pItem.sy,
+					// 缓动回弹效果
+					easy: 'elastic.out'
+				})
+			}
+		}
+
+		start()
+
+		this.startLineMove = start
+
+		this.pauseLineMove = pause
 
 	}
 }
